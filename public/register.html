@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nuntio - Регистрация</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      background: #0a0a0a;
+    }
+    
+    .card {
+      background: #111113;
+      border: 1px solid #1f1f22;
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .card:hover {
+      transform: translateY(-16px) scale(1.02);
+      border-color: #52525b;
+      box-shadow: 0 30px 60px -15px rgb(0 0 0 / 0.6);
+    }
+
+    input {
+      background: #0a0a0a;
+      transition: all 0.3s ease;
+    }
+
+    input:focus {
+      border-color: #52525b;
+      box-shadow: 0 0 0 4px rgba(82, 82, 91, 0.15);
+    }
+
+    /* Инпут при ошибке */
+    input.input-error {
+      border-color: #ef4444 !important;
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15) !important;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center text-white">
+  <div class="w-full max-w-md px-6 py-12">
+    
+    <div class="flex justify-center mb-16">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-white rounded-2xl flex items-center justify-center">
+          <span class="text-black text-3xl font-bold">N</span>
+        </div>
+        <h1 class="text-4xl font-medium tracking-tight">Nuntio</h1>
+      </div>
+    </div>
+
+    <div class="card rounded-3xl p-10">
+      <h2 class="text-2xl font-medium text-center mb-1">Создать аккаунт</h2>
+      <p class="text-zinc-400 text-center mb-10 text-sm">Присоединяйся к Nuntio</p>
+
+      <form id="registerForm" class="space-y-8">
+        <div>
+          <label class="block text-xs tracking-widest text-zinc-500 mb-2">ЮЗЕРНЕЙМ</label>
+          <input 
+            type="text" 
+            id="username" 
+            placeholder="username" 
+            required
+            class="w-full border border-zinc-800 focus:border-zinc-600 rounded-2xl px-6 py-4 text-base">
+          <p id="usernameError" class="text-xs text-red-500 mt-2 hidden">Этот юзернейм уже занят</p>
+        </div>
+
+        <div>
+          <label class="block text-xs tracking-widest text-zinc-500 mb-2">EMAIL</label>
+          <input 
+            type="email" 
+            id="email" 
+            placeholder="your@email.com" 
+            required
+            class="w-full border border-zinc-800 focus:border-zinc-600 rounded-2xl px-6 py-4 text-base">
+          <p id="emailError" class="text-xs text-red-500 mt-2 hidden">Пользователь с таким email уже зарегистрирован</p>
+        </div>
+
+        <div>
+          <label class="block text-xs tracking-widest text-zinc-500 mb-2">ПАРОЛЬ</label>
+          <input 
+            type="password" 
+            id="password" 
+            placeholder="••••••••" 
+            required
+            class="w-full border border-zinc-800 focus:border-zinc-600 rounded-2xl px-6 py-4 text-base">
+        </div>
+
+        <button 
+          type="submit"
+          id="submitBtn"
+          class="w-full bg-white text-black py-4 rounded-2xl font-medium text-base hover:bg-zinc-100 active:scale-[0.97] transition disabled:opacity-50 disabled:pointer-events-none">
+          Создать аккаунт
+        </button>
+      </form>
+
+      <p class="text-center mt-10 text-zinc-400 text-sm">
+        Уже есть аккаунт? 
+        <a href="login.html" class="text-white hover:underline">Войти</a>
+      </p>
+    </div>
+
+    <p class="text-center text-zinc-600 text-xs mt-12">
+      © 2026 Nuntio
+    </p>
+  </div>
+
+  <script>
+    const usernameInput = document.getElementById('username');
+    const usernameError = document.getElementById('usernameError');
+    const emailInput = document.getElementById('email');
+    const emailError = document.getElementById('emailError');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    let usernameValid = true;
+    let emailValid = true;
+    let debounceTimer;
+
+    // Функция проверки доступности кнопки
+    function updateSubmitButtonState() {
+      submitBtn.disabled = !(usernameValid && emailValid);
+    }
+
+    // Проверка юзернейма на лету
+    usernameInput.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      const username = usernameInput.value.trim();
+
+      if (username.length < 1) {
+        usernameError.classList.add('hidden');
+        usernameInput.classList.remove('input-error');
+        usernameValid = true;
+        updateSubmitButtonState();
+        return;
+      }
+
+      debounceTimer = setTimeout(async () => {
+        try {
+          const res = await fetch(`http://localhost:3000/api/users/check-username?username=${encodeURIComponent(username)}`);
+          const data = await res.json();
+
+          if (!data.available) {
+            usernameError.classList.remove('hidden');
+            usernameInput.classList.add('input-error');
+            usernameValid = false;
+          } else {
+            usernameError.classList.add('hidden');
+            usernameInput.classList.remove('input-error');
+            usernameValid = true;
+          }
+          updateSubmitButtonState();
+        } catch (err) {
+          console.error(err);
+        }
+      }, 400); 
+    });
+
+    // Проверка email на лету
+    emailInput.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      const email = emailInput.value.trim();
+
+      if (email.length < 1) {
+        emailError.classList.add('hidden');
+        emailInput.classList.remove('input-error');
+        emailValid = true;
+        updateSubmitButtonState();
+        return;
+      }
+
+      debounceTimer = setTimeout(async () => {
+        try {
+          const res = await fetch(`http://localhost:3000/api/users/check-email?email=${encodeURIComponent(email)}`);
+          const data = await res.json();
+
+          if (!data.available) {
+            emailError.classList.remove('hidden');
+            emailInput.classList.add('input-error');
+            emailValid = false;
+          } else {
+            emailError.classList.add('hidden');
+            emailInput.classList.remove('input-error');
+            emailValid = true;
+          }
+          updateSubmitButtonState();
+        } catch (err) {
+          console.error(err);
+        }
+      }, 400);
+    });
+
+    // Отправка формы регистрации
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const username = usernameInput.value.trim();
+      const email = emailInput.value.trim();
+      const password = document.getElementById('password').value;
+
+      try {
+        const res = await fetch('http://localhost:3000/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, email, password })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          localStorage.setItem('pendingEmail', email);
+          window.location.href = 'verify.html';
+        } else {
+          alert(data.message || 'Ошибка регистрации');
+        }
+      } catch (err) {
+        alert('Не удалось подключиться к серверу');
+      }
+    });
+  </script>
+</body>
+</html>

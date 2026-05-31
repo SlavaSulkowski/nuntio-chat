@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nuntio - Подтверждение</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      background: #0a0a0a;
+    }
+    
+    .card {
+      background: #111113;
+      border: 1px solid #1f1f22;
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Твоя фирменная анимация при наведении */
+    .card:hover {
+      transform: translateY(-16px) scale(1.02);
+      border-color: #52525b;
+      box-shadow: 0 30px 60px -15px rgb(0 0 0 / 0.6);
+    }
+
+    input {
+      background: #0a0a0a;
+      transition: all 0.3s ease;
+    }
+
+    input:focus {
+      border-color: #52525b;
+      box-shadow: 0 0 0 4px rgba(82, 82, 91, 0.15);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center text-white">
+  <div class="w-full max-w-md px-6 py-12">
+    
+    <div class="flex justify-center mb-16">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-white rounded-2xl flex items-center justify-center">
+          <span class="text-black text-3xl font-bold">N</span>
+        </div>
+        <h1 class="text-4xl font-medium tracking-tight">Nuntio</h1>
+      </div>
+    </div>
+
+    <div class="card rounded-3xl p-10">
+      <h2 class="text-2xl font-medium text-center mb-1">Подтверждение почты</h2>
+      <p class="text-zinc-400 text-center mb-10 text-sm">Мы отправили код на ваш email</p>
+
+      <form id="verifyForm" class="space-y-8">
+        <div>
+          <label class="block text-xs tracking-widest text-zinc-500 mb-2">КОД ПОДТВЕРЖДЕНИЯ</label>
+          <input 
+            type="text" 
+            id="code" 
+            placeholder="000000" 
+            maxlength="6"
+            required
+            class="w-full border border-zinc-800 focus:border-zinc-600 rounded-2xl px-6 py-4 text-base text-center tracking-[6px] font-bold">
+        </div>
+
+        <button 
+          type="submit"
+          class="w-full bg-white text-black py-4 rounded-2xl font-medium text-base hover:bg-zinc-100 active:scale-[0.97] transition">
+          Подтвердить аккаунт
+        </button>
+      </form>
+
+      <p class="text-center mt-10 text-zinc-400 text-sm">
+        Ошиблись в данных? 
+        <a href="register.html" class="text-white hover:underline">Создать заново</a>
+      </p>
+    </div>
+
+    <p class="text-center text-zinc-600 text-xs mt-12">
+      © 2026 Nuntio
+    </p>
+  </div>
+
+  <script>
+    document.getElementById('verifyForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const code = document.getElementById('code').value;
+      const email = localStorage.getItem('pendingEmail');
+
+      if (!email) {
+        alert('Email не найден. Пожалуйста, пройдите регистрацию заново.');
+        window.location.href = 'register.html';
+        return;
+      }
+
+      try {
+        const res = await fetch('http://localhost:3000/api/verify-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, code })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          alert('Отлично! Аккаунт успешно создан.');
+          localStorage.removeItem('pendingEmail'); 
+          window.location.href = 'login.html'; 
+        } else {
+          alert(data.message || 'Неверный код');
+        }
+      } catch (err) {
+        alert('Не удалось подключиться к серверу');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nuntio - Вход</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      background: #0a0a0a;
+    }
+    
+    .card {
+      background: #111113;
+      border: 1px solid #1f1f22;
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .card:hover {
+      transform: translateY(-16px) scale(1.02);
+      border-color: #52525b;
+      box-shadow: 0 30px 60px -15px rgb(0 0 0 / 0.6);
+    }
+
+    input {
+      background: #0a0a0a;
+      transition: all 0.3s ease;
+    }
+
+    input:focus {
+      border-color: #52525b;
+      box-shadow: 0 0 0 4px rgba(82, 82, 91, 0.15);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center text-white">
+  <div class="w-full max-w-md px-6 py-12">
+    
+    <div class="flex justify-center mb-16">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-white rounded-2xl flex items-center justify-center">
+          <span class="text-black text-3xl font-bold">N</span>
+        </div>
+        <h1 class="text-4xl font-medium tracking-tight">Nuntio</h1>
+      </div>
+    </div>
+
+    <div class="card rounded-3xl p-10">
+      <h2 class="text-2xl font-medium text-center mb-1">С возвращением</h2>
+      <p class="text-zinc-400 text-center mb-10 text-sm">Рады видеть тебя снова</p>
+
+      <form id="loginForm" class="space-y-8">
+        <div>
+          <label class="block text-xs tracking-widest text-zinc-500 mb-2">EMAIL</label>
+          <input 
+            type="email" 
+            id="email" 
+            placeholder="your@email.com" 
+            required
+            class="w-full border border-zinc-800 focus:border-zinc-600 rounded-2xl px-6 py-4 text-base">
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-2">
+            <label class="block text-xs tracking-widest text-zinc-500">ПАРОЛЬ</label>
+            <a href="reset-password.html" class="text-xs text-zinc-400 hover:text-white hover:underline">Забыл пароль?</a>
+          </div>
+          <input 
+            type="password" 
+            id="password" 
+            placeholder="••••••••" 
+            required
+            class="w-full border border-zinc-800 focus:border-zinc-600 rounded-2xl px-6 py-4 text-base">
+        </div>
+
+        <button 
+          type="submit"
+          class="w-full bg-white text-black py-4 rounded-2xl font-medium text-base hover:bg-zinc-100 active:scale-[0.97] transition">
+          Войти
+        </button>
+      </form>
+
+      <p class="text-center mt-10 text-zinc-400 text-sm">
+        Нет аккаунта? 
+        <a href="register.html" class="text-white hover:underline">Создать аккаунт</a>
+      </p>
+    </div>
+
+    <p class="text-center text-zinc-600 text-xs mt-12">
+      © 2026 Nuntio
+    </p>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      try {
+        const res = await fetch('http://localhost:3000/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          window.location.href = 'index.html';
+        } else {
+          alert(data.message || 'Ошибка входа');
+        }
+      } catch (err) {
+        alert('Не удалось подключиться к серверу');
+      }
+    });
+  </script>
+</body>
+</html>

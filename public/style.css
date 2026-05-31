@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #0a0a0a;
+}
+
+/* Эффект стеклянной панели для карточек */
+.card {
+  background: #111113;
+  border: 1px solid #1f1f22;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Анимация при наведении */
+.card:hover {
+  transform: translateY(-16px) scale(1.02);
+  border-color: #52525b;
+  box-shadow: 0 30px 60px -15px rgb(0 0 0 / 0.6);
+}
+
+input {
+  background: #0a0a0a;
+  transition: all 0.3s ease;
+}
+
+input:focus {
+  border-color: #52525b;
+  box-shadow: 0 0 0 4px rgba(82, 82, 91, 0.15);
+}

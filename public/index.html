@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nuntio - Мессенджер</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { background: #0a0a0a; }
+    .chat-bg { background: #111113; border-right: 1px solid #1f1f22; }
+    .main-bg { background: #0a0a0a; }
+    .card-active { background: #1f1f22; border-color: #52525b; }
+    
+    input {
+      background: #0a0a0a;
+      transition: all 0.3s ease;
+    }
+    input:focus {
+      border-color: #52525b;
+      box-shadow: 0 0 0 4px rgba(82, 82, 91, 0.15);
+    }
+    
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #1f1f22; border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: #27272a; }
+  </style>
+</head>
+<body class="h-screen flex text-white overflow-hidden select-none">
+
+  <div class="w-80 chat-bg flex flex-col justify-between shrink-0">
+    <div class="flex flex-col h-full overflow-hidden">
+      <div class="p-6 flex items-center gap-3 border-b border-zinc-900">
+        <div class="w-8 h-8 bg-white rounded-xl flex items-center justify-center">
+          <span class="text-black text-xl font-bold">N</span>
+        </div>
+        <span class="text-xl font-medium tracking-tight">Nuntio</span>
+      </div>
+
+      <div class="p-4 border-b border-zinc-900">
+        <input 
+          type="text" 
+          id="searchParam" 
+          placeholder="Поиск по юзернейму..." 
+          class="w-full border border-zinc-800 rounded-xl px-4 py-3 text-xs text-white placeholder-zinc-500">
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-4 space-y-6">
+        <div id="searchResultsSection" class="hidden">
+          <p class="text-[10px] tracking-widest text-zinc-500 px-2 mb-2 uppercase">Результаты поиска</p>
+          <div id="searchResultsContainer" class="space-y-1"></div>
+        </div>
+
+        <div>
+          <p class="text-[10px] tracking-widest text-zinc-500 px-2 mb-2 uppercase">Диалоги</p>
+          <div id="chatsContainer" class="space-y-1">
+            <p id="noChatsText" class="text-xs text-zinc-600 px-2 mt-2 italic">Нет активных чатов. Найдите кого-нибудь по юзернейму через поиск!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-4 border-t border-zinc-900 flex items-center justify-between bg-zinc-950/20">
+      <div class="flex items-center gap-3 min-w-0">
+        <img id="myAvatar" src="" class="w-9 h-9 rounded-full bg-zinc-800 object-cover">
+        <div class="leading-none min-w-0">
+          <h4 id="myUsername" class="text-sm font-medium truncate">Username</h4>
+          <span class="text-[10px] text-emerald-400">в сети</span>
+        </div>
+      </div>
+      <button id="logoutBtn" class="text-xs text-zinc-500 hover:text-red-400 transition ml-2 shrink-0">Выйти</button>
+    </div>
+  </div>
+
+  <div class="flex-1 flex flex-col justify-between h-full main-bg">
+    <div id="blankChatState" class="flex-1 flex flex-col items-center justify-center text-center p-6">
+      <div class="w-12 h-12 bg-zinc-900 rounded-2xl flex items-center justify-center border border-zinc-800 mb-4 text-zinc-400 text-xl">💬</div>
+      <h3 class="text-base font-medium mb-1">Ваши сообщения</h3>
+      <p class="text-xs text-zinc-500 max-w-xs">Выберите существующий диалог или найдите собеседника по юзернейму через поиск.</p>
+    </div>
+
+    <div id="activeChatState" class="hidden flex-1 flex flex-col justify-between h-full overflow-hidden">
+      <div class="p-6 border-b border-zinc-900 flex items-center gap-3 bg-zinc-950/10">
+        <img id="currentChatAvatar" src="" class="w-8 h-8 rounded-full bg-zinc-800 object-cover">
+        <div>
+          <h2 id="currentChatName" class="text-sm font-medium">Собеседник</h2>
+          <p class="text-[10px] text-zinc-500">Личные сообщения</p>
+        </div>
+      </div>
+
+      <div id="messagesContainer" class="flex-1 p-6 overflow-y-auto space-y-4 flex flex-col"></div>
+
+      <div class="p-6 bg-zinc-950/10 border-t border-zinc-900">
+        <form id="messageForm" class="flex gap-4">
+          <input 
+            type="text" 
+            id="messageInput" 
+            placeholder="Напишите сообщение..." 
+            autocomplete="off"
+            required
+            class="flex-1 border border-zinc-800 focus:border-zinc-700 rounded-2xl px-6 py-4 text-sm text-white">
+          <button 
+            type="submit" 
+            class="bg-white text-black px-8 rounded-2xl font-medium hover:bg-zinc-200 active:scale-95 transition text-sm">
+            Отправить
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('token');
+    const currentUser = JSON.parse(localStorage.getItem('user'));
+
+    if (!token || !currentUser) {
+      window.location.href = 'login.html';
+    }
+
+    document.getElementById('myUsername').textContent = currentUser.username;
+    document.getElementById('myAvatar').src = currentUser.avatar;
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.clear();
+      window.location.href = 'login.html';
+    });
+
+    const socket = io();
+    socket.emit('user_connected', currentUser.id);
+
+    const chatHistories = {};
+    const activeDialogs = new Map();
+    let currentActiveUserId = null;
+
+    // Поиск по юзернейму
+    document.getElementById('searchParam').addEventListener('input', async (e) => {
+      const value = e.target.value.trim();
+      const section = document.getElementById('searchResultsSection');
+      const container = document.getElementById('searchResultsContainer');
+      
+      if (value.length < 1) {
+        section.classList.add('hidden');
+        container.innerHTML = '';
+        return;
+      }
+
+      try {
+        const res = await fetch(`http://localhost:3000/api/users/search?query=${encodeURIComponent(value)}`);
+        const users = await res.json();
+
+        container.innerHTML = '';
+        const filteredUsers = users.filter(u => u.id !== currentUser.id);
+
+        if (filteredUsers.length === 0) {
+          container.innerHTML = `<p class="text-xs text-zinc-600 p-2 italic">Никого не найдено</p>`;
+        } else {
+          filteredUsers.forEach(user => {
+            const div = document.createElement('div');
+            div.className = 'flex items-center gap-3 p-2 hover:bg-zinc-900 rounded-xl cursor-pointer transition';
+            div.innerHTML = `
+              <img src="${user.avatar}" class="w-8 h-8 rounded-full bg-zinc-800 object-cover">
+              <span class="text-xs font-medium">${user.username}</span>
+            `;
+            div.addEventListener('click', () => {
+              openChat(user);
+              document.getElementById('searchParam').value = '';
+              section.classList.add('hidden');
+            });
+            container.appendChild(div);
+          });
+        }
+        section.classList.remove('hidden');
+      } catch (err) {
+        console.error('Ошибка поиска:', err);
+      }
+    });
+
+    function openChat(user) {
+      currentActiveUserId = user.id;
+      
+      if (!activeDialogs.has(user.id)) {
+        activeDialogs.set(user.id, user);
+        renderDialogsList();
+      }
+
+      document.getElementById('blankChatState').classList.add('hidden');
+      document.getElementById('activeChatState').classList.remove('hidden');
+
+      document.getElementById('currentChatName').textContent = user.username;
+      document.getElementById('currentChatAvatar').src = user.avatar;
+
+      updateDialogSelection();
+      renderMessages();
+    }
+
+    function renderDialogsList() {
+      const container = document.getElementById('chatsContainer');
+      const noChatsText = document.getElementById('noChatsText');
+
+      if (activeDialogs.size > 0) {
+        noChatsText.classList.add('hidden');
+      }
+
+      const items = container.querySelectorAll('.dialog-item');
+      items.forEach(el => el.remove());
+
+      activeDialogs.forEach(user => {
+        const div = document.createElement('div');
+        div.id = `dialog-item-${user.id}`;
+        div.className = 'dialog-item flex items-center gap-3 p-3 hover:bg-zinc-900/60 rounded-2xl cursor-pointer transition border border-transparent';
+        div.innerHTML = `
+          <img src="${user.avatar}" class="w-9 h-9 rounded-full bg-zinc-800 object-cover">
+          <div class="flex-1 min-w-0">
+            <h3 class="text-xs font-medium truncate">${user.username}</h3>
+            <p id="last-msg-${user.id}" class="text-[10px] text-zinc-500 truncate">Нажмите, чтобы открыть чат</p>
+          </div>
+        `;
+        div.addEventListener('click', () => openChat(user));
+        container.appendChild(div);
+      });
+
+      updateDialogSelection();
+    }
+
+    function updateDialogSelection() {
+      const items = document.querySelectorAll('.dialog-item');
+      items.forEach(el => {
+        el.classList.remove('bg-zinc-900', 'border-zinc-800');
+      });
+
+      if (currentActiveUserId) {
+        const activeEl = document.getElementById(`dialog-item-${currentActiveUserId}`);
+        if (activeEl) {
+          activeEl.classList.add('bg-zinc-900', 'border-zinc-800');
+        }
+      }
+    }
+
+    function renderMessages() {
+      const container = document.getElementById('messagesContainer');
+      container.innerHTML = '';
+
+      const history = chatHistories[currentActiveUserId] || [];
+
+      history.forEach(msg => {
+        const isMe = msg.senderId === currentUser.id;
+        const msgHTML = document.createElement('div');
+        
+        if (isMe) {
+          msgHTML.className = 'flex items-start gap-2 max-w-xs sm:max-w-md ml-auto flex-row-reverse';
+          msgHTML.innerHTML = `
+            <img src="${currentUser.avatar}" class="w-7 h-7 rounded-full object-cover shrink-0">
+            <div class="bg-white text-black px-4 py-3 rounded-2xl rounded-tr-none text-xs leading-relaxed">
+              <p>${escapeHTML(msg.text)}</p>
+              <span class="block text-[8px] text-zinc-500 text-right mt-1">${msg.time}</span>
+            </div>
+          `;
+        } else {
+          msgHTML.className = 'flex items-start gap-2 max-w-xs sm:max-w-md';
+          msgHTML.innerHTML = `
+            <img src="${msg.senderAvatar}" class="w-7 h-7 rounded-full object-cover shrink-0">
+            <div class="bg-zinc-900 border border-zinc-800 text-zinc-100 px-4 py-3 rounded-2xl rounded-tl-none text-xs leading-relaxed">
+              <p>${escapeHTML(msg.text)}</p>
+              <span class="block text-[8px] text-zinc-500 mt-1">${msg.time}</span>
+            </div>
+          `;
+        }
+        container.appendChild(msgHTML);
+      });
+
+      container.scrollTop = container.scrollHeight;
+    }
+
+    document.getElementById('messageForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = document.getElementById('messageInput');
+      const text = input.value.trim();
+      
+      if (!text || !currentActiveUserId) return;
+
+      socket.emit('send_private_message', {
+        senderId: currentUser.id,
+        receiverId: currentActiveUserId,
+        text: text,
+        senderName: currentUser.username,
+        senderAvatar: currentUser.avatar
+      });
+
+      input.value = '';
+    });
+
+    socket.on('message_sent_success', (messageData) => {
+      if (!chatHistories[currentActiveUserId]) {
+        chatHistories[currentActiveUserId] = [];
+      }
+      chatHistories[currentActiveUserId].push(messageData);
+      
+      const lastMsgText = document.getElementById(`last-msg-${currentActiveUserId}`);
+      if (lastMsgText) lastMsgText.textContent = `Вы: ${messageData.text}`;
+
+      renderMessages();
+    });
+
+    socket.on('receive_private_message', (messageData) => {
+      const senderId = messageData.senderId;
+
+      if (!chatHistories[senderId]) {
+        chatHistories[senderId] = [];
+      }
+      chatHistories[senderId].push(messageData);
+
+      if (!activeDialogs.has(senderId)) {
+        activeDialogs.set(senderId, {
+          id: senderId,
+          username: messageData.senderName,
+          avatar: messageData.senderAvatar
+        });
+        renderDialogsList();
+      }
+
+      const lastMsgText = document.getElementById(`last-msg-${senderId}`);
+      if (lastMsgText) lastMsgText.textContent = messageData.text;
+
+      if (currentActiveUserId === senderId) {
+        renderMessages();
+      }
+    });
+
+    function escapeHTML(str) {
+      return str.replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+  </script>
+</body>
+</html>
